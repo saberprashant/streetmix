@@ -68,7 +68,7 @@ exports.post = function (req, res) {
     } // END function - handleFindUser
 
     // Try to find user with twitter ID
-    User.findOne({ twitter_id: twitterCredentials.userId }, handleFindUser)
+    User.findOne({ where: { twitter_id: twitterCredentials.userId } }, handleFindUser)
   } // END function - handleTwitterSignIn
 
   var body
@@ -90,6 +90,7 @@ exports.post = function (req, res) {
 
 exports.get = function (req, res) {
   var handleFindUserById = function (err, user) {
+    console.log('handleFindUserById')
     if (err) {
       logger.error(err)
       res.status(500).send('Error finding user.')
@@ -117,19 +118,22 @@ exports.get = function (req, res) {
     var sendUserJson = function (twitterData) {
       var auth = (user.login_tokens.indexOf(req.loginToken) > 0)
 
-      user.asJson({ auth: auth }, function (err, userJson) {
-        if (err) {
-          logger.error(err)
-          res.status(500).send('Could not render user JSON.')
-          return
-        }
+      // user.asJson({ auth: auth }, function (err, userJson) {
+      //   if (err) {
+      //     logger.error(err)
+      //     res.status(500).send('Could not render user JSON.')
+      //     return
+      //   }
 
-        if (twitterData) {
-          userJson.profileImageUrl = twitterData.profile_image_url_https
-        }
+      //   if (twitterData) {
+      //     userJson.profileImageUrl = twitterData.profile_image_url_https
+      //   }
 
-        res.status(200).send(userJson)
-      })
+      //   res.status(200).send(userJson)
+      // })
+      // res.status(200).send(user)
+      Console.log(user)
+      res.status(200).send(user)
     } // END function - sendUserJson
 
     var responseAlreadySent = false
@@ -190,13 +194,15 @@ exports.get = function (req, res) {
       return
     }
 
-    User.findOne({ id: userId }, handleFindUserById)
+    User.findOne({ where: { id: userId } }, handleFindUserById)
   } // END function - handleFindUserByLoginToken
 
   if (req.loginToken) {
-    User.findOne({ login_tokens: { $in: [ req.loginToken ] } }, handleFindUserByLoginToken)
+    console.log('123')
+    User.findOne({ where:{ login_tokens: { $in: [ req.loginToken ] } } }, handleFindUserByLoginToken)
   } else {
-    User.findOne({ id: userId }, handleFindUserById)
+    console.log(User.findOne({where: { id: userId }}))
+    User.findOne({where: { id: userId }}, handleFindUserById)
   }
 } // END function - exports.get
 
@@ -239,7 +245,7 @@ exports.delete = function (req, res) {
   }
 
   var userId = req.params.user_id
-  User.findOne({ id: userId }, handleFindUser)
+  User.findOne({ where: { id: userId } }, handleFindUser)
 } // END function - exports.delete
 
 exports.put = function (req, res) {
@@ -288,5 +294,5 @@ exports.put = function (req, res) {
   }
 
   var userId = req.params.user_id
-  User.findOne({ id: userId }, handleFindUser)
+  User.findOne({ where: { id: userId } }, handleFindUser)
 } // END function - exports.put

@@ -69,20 +69,20 @@ app.get('/help/about', function (req, res) {
 app.get('/twitter-sign-in', controllers.twitter_sign_in.get)
 app.get(config.twitter.oauth_callback_uri, controllers.twitter_sign_in_callback.get)
 
-app.post('/api/v1/users', resources.v1.users.post)
+// app.post('/api/v1/users', resources.v1.users.post)
 app.get('/api/v1/users/:user_id', resources.v1.users.get)
-app.put('/api/v1/users/:user_id', resources.v1.users.put)
-app.delete('/api/v1/users/:user_id/login-token', resources.v1.users.delete)
-app.get('/api/v1/users/:user_id/streets', resources.v1.users_streets.get)
+// app.put('/api/v1/users/:user_id', resources.v1.users.put)
+// app.delete('/api/v1/users/:user_id/login-token', resources.v1.users.delete)
+// app.get('/api/v1/users/:user_id/streets', resources.v1.users_streets.get)
 
-app.post('/api/v1/streets', resources.v1.streets.post)
-app.get('/api/v1/streets', resources.v1.streets.find)
-app.head('/api/v1/streets', resources.v1.streets.find)
+// app.post('/api/v1/streets', resources.v1.streets.post)
+// app.get('/api/v1/streets', resources.v1.streets.find)
+// app.head('/api/v1/streets', resources.v1.streets.find)
 
-app.delete('/api/v1/streets/:street_id', resources.v1.streets.delete)
-app.head('/api/v1/streets/:street_id', resources.v1.streets.get)
-app.get('/api/v1/streets/:street_id', resources.v1.streets.get)
-app.put('/api/v1/streets/:street_id', resources.v1.streets.put)
+// app.delete('/api/v1/streets/:street_id', resources.v1.streets.delete)
+// app.head('/api/v1/streets/:street_id', resources.v1.streets.get)
+// app.get('/api/v1/streets/:street_id', resources.v1.streets.get)
+// app.put('/api/v1/streets/:street_id', resources.v1.streets.put)
 
 app.post('/api/v1/feedback', resources.v1.feedback.post)
 
