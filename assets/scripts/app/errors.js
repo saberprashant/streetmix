@@ -52,6 +52,8 @@ export function showError (errorType, newAbortEverything) {
 
   setAbortEverything(newAbortEverything)
 
+  console.trace("ErrorType: " + errorType)
+
   switch (errorType) {
     case ERRORS.NOT_FOUND:
       title = 'Page not found.'

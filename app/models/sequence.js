@@ -1,8 +1,24 @@
-var mongoose = require('mongoose')
+var config = require('config')
 
-var sequenceSchema = new mongoose.Schema({
-  _id: { type: String, index: { unique: true } },
-  seq: { type: Number, default: 1 }
-})
+var Sequelize = require('sequelize');
+var sequelize = new Sequelize(config.db.pg_url);
 
-module.exports = mongoose.model('Sequence', sequenceSchema)
+var Sequence = sequelize.define('sequence', {
+  seq: {
+      type: Sequelize.INTEGER,
+      autoIncrement: true,
+      primaryKey: true
+  }
+},
+{
+  indexes: [
+    {
+      unique: true,
+      fields: ['seq']
+    }
+  ],
+  underscored: true
+});
+
+// Sequence.sync({force: true})
+module.exports = Sequence;

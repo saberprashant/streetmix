@@ -10,65 +10,73 @@ exports.post = function (req, res) {
   var handleTwitterSignIn = function (twitterCredentials) {
     // TODO: Call Twitter API with OAuth access credentials to make sure they are valid
 
-    var handleCreateUser = function (err, user) {
-      if (err) {
-        logger.error(err)
-        res.status(500).send('Could not create user.')
-        return
-      }
-
-      var userJson = { id: user.id, loginToken: loginToken }
+    var handleCreateUser = function (user) {
+      var userJson = { id: user.twitter_id, loginToken: loginToken }
       logger.info({ user: userJson }, 'New user created.')
-      res.header('Location', config.restapi.baseuri + '/v1/users/' + user.id)
+      res.header('Location', config.restapi.baseuri + '/v1/users/' + user.twitter_name)
       res.status(201).send(userJson)
     } // END function - handleCreateUser
 
-    var handleUpdateUser = function (err, user) {
-      if (err) {
-        logger.error(err)
-        res.status(500).send('Could not update user.')
-        return
-      }
-
-      var userJson = { id: user.id, loginToken: loginToken }
+    var handleUpdateUser = function (user) {
+      var userJson = { id: user.twitter_id, loginToken: loginToken }
       logger.info({ user: userJson }, 'Existing user issued new login token.')
 
-      res.header('Location', config.restapi.baseuri + '/v1/users/' + user.id)
+      res.header('Location', config.restapi.baseuri + '/v1/users/' + user.twitter_id)
       res.status(200).send(userJson)
     } // END function - handleUpdateUser
 
-    var handleFindUser = function (err, user) {
-      if (err) {
-        logger.error(err)
-        res.status(500).send('Error finding user with Twitter ID.')
-        return
-      }
+    var handleFindUser = function (user) {
+      // if (err) {
+      //   logger.error(err)
+      //   res.status(500).send('Error finding user with Twitter ID.')
+      //   return
+      // }
 
       loginToken = uuid.v1()
       if (!user) {
-        var u = new User({
-          id: twitterCredentials.screenName,
+        User.create({
+          twitter_name: twitterCredentials.screenName,
           twitter_id: twitterCredentials.userId,
           twitter_credentials: {
             access_token_key: twitterCredentials.oauthAccessTokenKey,
             access_token_secret: twitterCredentials.oauthAccessTokenSecret
           },
           login_tokens: [ loginToken ]
-        })
-        u.save(handleCreateUser)
+        }).then(function(user){
+          handleCreateUser(user)
+        }).catch(function (err) {
+          // handle error;
+          logger.error(err)
+          res.status(500).send('Error finding user with Twitter ID.')
+          return
+        });
+        // u.save(handleCreateUser)
       } else {
-        user.id = twitterCredentials.screenName
+        user.twitter_name = twitterCredentials.screenName
         user.twitter_credentials = {
           access_token_key: twitterCredentials.oauthAccessTokenKey,
           access_token_secret: twitterCredentials.oauthAccessTokenSecret
         }
-        user.login_tokens.push(loginToken)
-        user.save(handleUpdateUser)
+        tokens = user.login_tokens
+        tokens.push(loginToken)        
+        user.login_tokens = tokens
+
+        user.save().then(handleUpdateUser).catch(function (err) {
+          // handle error;
+          logger.error(err)
+          res.status(500).send('Error finding user with Twitter ID.')
+          return
+        });
       }
     } // END function - handleFindUser
 
     // Try to find user with twitter ID
-    User.findOne({ where: { twitter_id: twitterCredentials.userId } }, handleFindUser)
+    User.findOne({ where: { twitter_id: twitterCredentials.userId } }).then(handleFindUser).catch(function (err) {
+      // handle error;
+      logger.error(err)
+      res.status(500).send('Error finding user with Twitter ID.')
+      return
+    });
   } // END function - handleTwitterSignIn
 
   var body
@@ -89,19 +97,11 @@ exports.post = function (req, res) {
 } // END function - exports.post
 
 exports.get = function (req, res) {
-  var handleFindUserById = function (err, user) {
-    console.log('handleFindUserById')
-    if (err) {
-      logger.error(err)
-      res.status(500).send('Error finding user.')
-      return
-    }
-
+  var handleFindUserById = function (user) {
     if (!user) {
       res.status(404).send('User not found.')
-      return
+      return Promise.resolve()
     }
-
     var twitterApiClient
     try {
       twitterApiClient = new Twitter({
@@ -114,26 +114,16 @@ exports.get = function (req, res) {
       logger.error('Could not initialize Twitter API client. Error:')
       logger.error(e)
     }
-
+    
     var sendUserJson = function (twitterData) {
       var auth = (user.login_tokens.indexOf(req.loginToken) > 0)
 
-      // user.asJson({ auth: auth }, function (err, userJson) {
-      //   if (err) {
-      //     logger.error(err)
-      //     res.status(500).send('Could not render user JSON.')
-      //     return
-      //   }
+      if (auth){
+        user.profile_image_url_https = twitterData.profile_image_url_https
+      }
 
-      //   if (twitterData) {
-      //     userJson.profileImageUrl = twitterData.profile_image_url_https
-      //   }
-
-      //   res.status(200).send(userJson)
-      // })
-      // res.status(200).send(user)
-      Console.log(user)
       res.status(200).send(user)
+
     } // END function - sendUserJson
 
     var responseAlreadySent = false
@@ -172,6 +162,7 @@ exports.get = function (req, res) {
     } else {
       sendUserJson()
     }
+    return
   } // END function - handleFindUserById
 
   // Flag error if user ID is not provided
@@ -182,27 +173,52 @@ exports.get = function (req, res) {
 
   var userId = req.params.user_id
 
-  var handleFindUserByLoginToken = function (err, user) {
-    if (err) {
-      logger.error(err)
-      res.status(500).send('Error finding user.')
-      return
-    }
+  var handleFindUserByLoginToken = function (user) {
+    // console.log("\n\nhandleFindUserByLoginToken\n\n")
+    // if (err) {
+    //   logger.error(err)
+    //   res.status(500).send('Error finding user.')
+    //   return
+    // }
 
     if (!user) {
       res.status(401).send('User with that login token not found.')
-      return
+      return Promise.resolve()
     }
 
-    User.findOne({ where: { id: userId } }, handleFindUserById)
+    return User.findOne({ 
+      where: { twitter_id: user.twitter_id } 
+    }).then(function(user){
+      return handleFindUserById(user)
+    }).catch(function(err){
+      logger.error(err)
+      res.status(500).send('Error finding user ' + user.twitter_id)
+      return
+    })
   } // END function - handleFindUserByLoginToken
 
   if (req.loginToken) {
-    console.log('123')
-    User.findOne({ where:{ login_tokens: { $in: [ req.loginToken ] } } }, handleFindUserByLoginToken)
+    console.log("look for user")
+    User.findOne({ 
+      where: { 
+        login_tokens: { $contains:  req.loginToken  } 
+      } 
+    }).then(function(user) {
+      return handleFindUserByLoginToken(user)
+    }).catch(function(err){
+      logger.error(err)
+      res.status(500).send('Error finding user.')
+      return
+    })
+
   } else {
-    console.log(User.findOne({where: { id: userId }}))
-    User.findOne({where: { id: userId }}, handleFindUserById)
+    User.findOne({where: { twitter_id: userId }}).then(function (user) {
+     return handleFindUserById(user)
+    }).catch(function (err) {
+      logger.error(err)
+      res.status(500).send('Could not find street.')
+      return
+    });
   }
 } // END function - exports.get
 
@@ -249,6 +265,7 @@ exports.delete = function (req, res) {
 } // END function - exports.delete
 
 exports.put = function (req, res) {
+
   var body
   try {
     body = req.body
@@ -257,34 +274,26 @@ exports.put = function (req, res) {
     return
   }
 
-  var handleSaveUser = function (err, user) {
-    if (err) {
-      logger.error(err)
-      res.status(500).send('Could not update user information.')
-      return
-    }
-    res.status(204).end()
-  } // END function - handleSaveUser
-
-  var handleFindUser = function (err, user) {
-    if (err) {
-      logger.error(err)
-      res.status(500).send('Error finding user.')
-      return
-    }
-
+  var handleFindUser = function (user) {
     if (!user) {
       res.status(404).send('User not found.')
-      return
+      return Promise.resolve()
     }
 
     if (user.login_tokens.indexOf(req.loginToken) === -1) {
       res.status(401).end()
-      return
+      return Promise.resolve()
     }
 
     user.data = body.data || user.data
-    user.save(handleSaveUser)
+    return user.save().then(function() {
+      res.status(204).end()
+      return
+    }).catch(function (err) {
+      logger.error(err)
+      res.status(500).send('Could not save update user data.')
+      return
+    });
   } // END function - handleFindUser
 
   // Flag error if user ID is not provided
@@ -294,5 +303,15 @@ exports.put = function (req, res) {
   }
 
   var userId = req.params.user_id
-  User.findOne({ where: { id: userId } }, handleFindUser)
+  User.findOne(
+    { 
+      where: { twitter_id: userId } 
+    }
+  ).then(function(user){
+    return handleFindUser(user)
+  }).catch(function (err) {
+      logger.error(err)
+      res.status(500).send('Could not find user @user_id: ' + userId)
+      return
+    });
 } // END function - exports.put

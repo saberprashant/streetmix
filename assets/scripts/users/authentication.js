@@ -124,7 +124,7 @@ export function loadSignIn () {
   }
 
   const signInData = getSignInData()
-
+console.log('signInData', signInData)
   if (signInData && signInData.token && signInData.userId) {
     fetchSignInDetails(signInData.userId)
 
@@ -147,7 +147,7 @@ function fetchSignInDetails (userId) {
   const options = {
     headers: { 'Authorization': getAuthHeader() }
   }
-
+console.log('fetchSignInDetails', userId)
   window.fetch(API_URL + 'v1/users/' + userId, options)
     .then(response => {
       if (!response.ok) {

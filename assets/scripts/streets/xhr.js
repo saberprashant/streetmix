@@ -127,6 +127,7 @@ function receiveNewStreet (data) {
 }
 
 function errorReceiveNewStreet (data) {
+  console.log(data)
   showError(ERRORS.NEW_STREET_SERVER_FAILURE, true)
 }
 
@@ -300,6 +301,7 @@ function unpackStreetDataFromServerTransmission (transmission) {
   // Catch a data error where a user's street might be retrieved
   // without any data in it (so-called error 9B)
   if (!transmission.data) {
+    logger.debug('\n\n' + transmission.get({plain: true} + '\n\n'))
     showError(ERRORS.STREET_DATA_FAILURE)
     return
   }

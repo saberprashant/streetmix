@@ -90,3 +90,73 @@
 // }
 
 // module.exports = mongoose.model('Street', streetSchema)
+var config = require('config')
+
+var Sequelize = require('sequelize');
+var sequelize = new Sequelize(config.db.pg_url);
+var User = require('./user.js');
+var Street = sequelize.define('street', {
+	id: {
+	      type: Sequelize.INTEGER,
+	      autoIncrement: true,
+	      primaryKey: true
+	  },
+	  name: {
+	    type: Sequelize.STRING
+	  },
+	  status: {
+	    type: Sequelize.STRING
+	  },
+	  data: {
+	    type: Sequelize.JSONB
+	  },
+	  creator_ip: {
+	    type: Sequelize.STRING
+	  },
+	  namespaced_id: {
+	    type: Sequelize.INTEGER
+	  },
+	  user_id: {
+	    type: Sequelize.INTEGER
+	  },
+	  original_street_id: {
+	    type: Sequelize.INTEGER
+	  }	  
+	},
+	{
+	  indexes: [
+	    {
+	      unique: true,
+	      fields: ['id','user_id']
+	    }
+	  ],
+	  underscored: true
+	}
+	// ,{
+ //    classMethods: {
+ //      associate: function(models) {
+ //        Street.belongsTo(models.User)
+ //      }
+ //    }
+ //  }
+);
+Street.belongsTo(User);
+
+// Street.sync().then(function () {
+//   // Table created
+//   // return Street.create({    
+//   //   name: 'My St',
+//   //   status: 'ACTIVE',
+//   //   user_id: 1
+//   // });
+
+  // return Street.create({    
+  //   name: 'My Anonymous St',
+  //   status: 'ACTIVE',
+  //   namespaced_id: 1
+  // });
+// });
+// Street.sync({force: true})
+
+
+module.exports = Street;
