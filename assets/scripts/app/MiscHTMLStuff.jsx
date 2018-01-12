@@ -6,13 +6,18 @@
  * @module MiscHTMLStuff
  */
 import React from 'react'
+import PropTypes from 'prop-types'
 import { connect } from 'react-redux'
 import { TILE_SIZE } from '../segments/view'
-import { getStreet } from '../streets/data_model'
 import { BUILDING_SPACE } from '../segments/buildings'
 import { app } from '../preinit/app_settings'
 
 class MiscHTMLStuff extends React.Component {
+  static propTypes = {
+    system: PropTypes.object,
+    streetWidth: PropTypes.any
+  }
+
   constructor (props) {
     super(props)
 
@@ -28,9 +33,8 @@ class MiscHTMLStuff extends React.Component {
   }
 
   componentDidMount () {
-
-    let streetSectionTop = null,
-      streetSectionHeight = this.refs.street_section_inner.offsetHeight
+    let streetSectionTop = null
+    let streetSectionHeight = this.refs.street_section_inner.offsetHeight
 
     if (this.props.system.viewportHeight - streetSectionHeight > 450) {
       streetSectionTop = ((this.props.system.viewportHeight - streetSectionHeight - 450) / 2) + 450 + 80
@@ -51,12 +55,14 @@ class MiscHTMLStuff extends React.Component {
       skyTop = 0
     }
 
-    const street = getStreet()
-    let streetSectionCanvasLeft = ((this.props.system.viewportWidth - (street.width * TILE_SIZE)) / 2) - BUILDING_SPACE
+    let streetSectionCanvasLeft = 0
+    if (this.props.streetWidth) {
+      streetSectionCanvasLeft = ((this.props.system.viewportWidth - (this.props.streetWidth * TILE_SIZE)) / 2) - BUILDING_SPACE
+    }
     if (streetSectionCanvasLeft < 0) {
       streetSectionCanvasLeft = 0
     }
-    const editableWidth = (street.width * TILE_SIZE)
+    const editableWidth = this.props.streetWidth * TILE_SIZE
 
     this.setState({
       streetSectionTop,
@@ -68,7 +74,6 @@ class MiscHTMLStuff extends React.Component {
       streetSectionCanvasLeft,
       editableWidth
     })
-
   }
 
   render () {
@@ -78,28 +83,28 @@ class MiscHTMLStuff extends React.Component {
           <section ref="street_section_inner" id="street-section-inner" style={{top: this.state.streetSectionTop}}>
             <section id="street-section-canvas" style={{left: this.state.streetSectionCanvasLeft}}>
               <section id="street-section-left-building" className="street-section-building">
-                <div className="hover-bk"/>
+                <div className="hover-bk" />
               </section>
               <section id="street-section-right-building" className="street-section-building">
-                <div className="hover-bk"/>
+                <div className="hover-bk" />
               </section>
-              <div id="street-section-editable"/>
-              <div id="street-section-left-empty-space" className="segment empty"/>
-              <div id="street-section-right-empty-space" className="segment empty"/>
-              <section id="street-section-dirt" style={{height: this.state.streetSectionDirtPos}}/>
+              <div id="street-section-editable" />
+              <div id="street-section-left-empty-space" className="segment empty" />
+              <div id="street-section-right-empty-space" className="segment empty" />
+              <section id="street-section-dirt" style={{height: this.state.streetSectionDirtPos}} />
             </section>
           </section>
         </section>
         <section id="street-section-sky" style={{
           top: this.state.streetSectionSkyTop,
           paddingTop: this.state.skyTop,
-          marginTop: (-1 * this.state.skyTop),
+          marginTop: (-1 * this.state.skyTop)
         }}>
-          <div className="rear-clouds"/>
-          <div className="front-clouds"/>
+          <div className="rear-clouds" />
+          <div className="front-clouds" />
         </section>
-        <div id="street-scroll-indicator-left" style={{top: this.state.scrollTop}}/>
-        <div id="street-scroll-indicator-right" style={{top: this.state.scrollTop}}/>
+        <div id="street-scroll-indicator-left" style={{top: this.state.scrollTop}} />
+        <div id="street-scroll-indicator-right" style={{top: this.state.scrollTop}} />
       </React.Fragment>
     )
   }
@@ -107,7 +112,8 @@ class MiscHTMLStuff extends React.Component {
 
 function mapStateToProps (state) {
   return {
-    system: state.system
+    system: state.system,
+    streetWidth: state.street.width
   }
 }
 
