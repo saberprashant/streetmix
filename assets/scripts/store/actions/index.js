@@ -90,6 +90,7 @@ export const SET_BUILDING_VARIANT = 'SET_BUILDING_VARIANT'
 
 /* system */
 export const SET_SYSTEM_FLAGS = 'SET_SYSTEM_FLAGS'
+export const WINDOW_RESIZE = 'WINDOW_RESIZE'
 
 /* ui */
 export const SHOW_STREET_NAME_CANVAS = 'SHOW_STREET_NAME_CANVAS'
