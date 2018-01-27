@@ -11,17 +11,17 @@ exports.post = function (req, res) {
     // TODO: Call Twitter API with OAuth access credentials to make sure they are valid
 
     var handleCreateUser = function (user) {
-      var userJson = { id: user.twitter_id, loginToken: loginToken }
+      var userJson = { id: user.twitter_name, loginToken: loginToken }
       logger.info({ user: userJson }, 'New user created.')
       res.header('Location', config.restapi.baseuri + '/v1/users/' + user.twitter_name)
       res.status(201).send(userJson)
     } // END function - handleCreateUser
 
     var handleUpdateUser = function (user) {
-      var userJson = { id: user.twitter_id, loginToken: loginToken }
+      var userJson = { id: user.twitter_name, loginToken: loginToken }
       logger.info({ user: userJson }, 'Existing user issued new login token.')
 
-      res.header('Location', config.restapi.baseuri + '/v1/users/' + user.twitter_id)
+      res.header('Location', config.restapi.baseuri + '/v1/users/' + user.twitter_name)
       res.status(200).send(userJson)
     } // END function - handleUpdateUser
 
@@ -97,10 +97,10 @@ exports.post = function (req, res) {
 } // END function - exports.post
 
 exports.get = function (req, res) {
-  var handleFindUserById = function (user) {
+  var handleFindUser = function (user) {
     if (!user) {
       res.status(404).send('User not found.')
-      return Promise.resolve()
+      return //Promise.resolve()
     }
     var twitterApiClient
     try {
@@ -119,7 +119,7 @@ exports.get = function (req, res) {
       var auth = (user.login_tokens.indexOf(req.loginToken) > 0)
 
       if (auth){
-        user.profile_image_url_https = twitterData.profile_image_url_https
+        user.profileImageUrl = twitterData.profile_image_url_https
       }
 
       res.status(200).send(user)
@@ -171,52 +171,40 @@ exports.get = function (req, res) {
     return
   }
 
-  var userId = req.params.user_id
-
-  var handleFindUserByLoginToken = function (user) {
-    // console.log("\n\nhandleFindUserByLoginToken\n\n")
-    // if (err) {
-    //   logger.error(err)
-    //   res.status(500).send('Error finding user.')
-    //   return
-    // }
-
-    if (!user) {
-      res.status(401).send('User with that login token not found.')
-      return Promise.resolve()
-    }
-
-    return User.findOne({ 
-      where: { twitter_id: user.twitter_id } 
-    }).then(function(user){
-      return handleFindUserById(user)
-    }).catch(function(err){
-      logger.error(err)
-      res.status(500).send('Error finding user ' + user.twitter_id)
-      return
-    })
-  } // END function - handleFindUserByLoginToken
-
+  var twitter_name = req.params.user_id
   if (req.loginToken) {
-    console.log("look for user")
+
     User.findOne({ 
       where: { 
         login_tokens: { $contains:  req.loginToken  } 
       } 
     }).then(function(user) {
-      return handleFindUserByLoginToken(user)
+      // return handleFindUserByLoginToken(user)
+      if (!user) {
+        res.status(401).send('User with that login token not found.')
+      } else {
+        handleFindUser(user)
+      }
+      return
     }).catch(function(err){
       logger.error(err)
       res.status(500).send('Error finding user.')
       return
     })
 
-  } else {
-    User.findOne({where: { twitter_id: userId }}).then(function (user) {
-     return handleFindUserById(user)
+  } else if (req.params.user_id) {
+    User.findOne({
+      where: { twitter_name: twitter_name }
+    }).then(function (user) {
+      if (!user) {
+        res.status(401).send('User not found: ' + twitter_name )
+      } else {
+        handleFindUser(user)
+      }
+     return
     }).catch(function (err) {
       logger.error(err)
-      res.status(500).send('Could not find street.')
+      res.status(500).send('Could not find user: ' + twitter_name)
       return
     });
   }
@@ -274,44 +262,40 @@ exports.put = function (req, res) {
     return
   }
 
-  var handleFindUser = function (user) {
-    if (!user) {
-      res.status(404).send('User not found.')
-      return Promise.resolve()
-    }
-
-    if (user.login_tokens.indexOf(req.loginToken) === -1) {
-      res.status(401).end()
-      return Promise.resolve()
-    }
-
-    user.data = body.data || user.data
-    return user.save().then(function() {
-      res.status(204).end()
-      return
-    }).catch(function (err) {
-      logger.error(err)
-      res.status(500).send('Could not save update user data.')
-      return
-    });
-  } // END function - handleFindUser
-
   // Flag error if user ID is not provided
   if (!req.params.user_id) {
     res.status(400).send('Please provide user ID.')
     return
   }
 
-  var userId = req.params.user_id
+  var twitter_name = req.params.user_id
   User.findOne(
     { 
-      where: { twitter_id: userId } 
+      where: { twitter_name: twitter_name } 
     }
   ).then(function(user){
-    return handleFindUser(user)
+    // return handleFindUser(user)
+    if (!user) {
+      res.status(404).send('User not found.')
+      // return Promise.resolve()
+    } else if (user.login_tokens.indexOf(req.loginToken) === -1) {
+      res.status(401).end()
+      // return //Promise.resolve()
+    } else{
+      user.data = body.data || user.data
+      return user.save().then(function() {
+        res.status(204).end()
+        return
+      }).catch(function (err) {
+        logger.error(err)
+        res.status(500).send('Could not save update user data.')
+        return
+      });
+    }
+    return
   }).catch(function (err) {
       logger.error(err)
-      res.status(500).send('Could not find user @user_id: ' + userId)
+      res.status(500).send('Could not find user @user_id: ' + twitter_name)
       return
-    });
+  });
 } // END function - exports.put

@@ -12,6 +12,8 @@ exports.post = function (req, res) {
   var street = Street.build({status: 'ACTIVE'})
   var body
 
+  promises = []
+
   var requestIp = function (req) {
     if (req.headers['x-forwarded-for'] !== undefined) {
       return req.headers['x-forwarded-for'].split(', ')[0]
@@ -34,18 +36,30 @@ exports.post = function (req, res) {
     street.data = body.data
     street.creator_ip = requestIp(req)
   }
+  
+  if (street){
+    if (req.loginToken) {
+      var p1 = User.findOne({
+        where:
+        { 
+          login_tokens: { $contains: req.loginToken }            
+        }
+      }).then(function(user){
+        if (user) {
+          street.user_id = user.id
+        }
+        return
+      }).catch(function (err) {
+        // handle error;
+        logger.error(err)
+        res.status(500).send('Could not find user @loginToken: ' + req.loginToken)
+        return
+      });
+      promises.push(p1)
+    }
 
-  var handleCreateStreet = function (s) {
-      // logger.info({ street: s }, 'New street created.')
-      res.header('Location', config.restapi.baseuri + '/v1/streets/' + s.id)
-      res.status(201).send(s)
-  } // END function - handleCreateStreet
-
-
-
-  var saveStreet = function () {
-    if (body && body.originalStreetId) {    	
-      return Street.findOne( {
+    if (body && body.originalStreetId) {
+      p2 = Street.findOne( {
         where: { 
           id: body.originalStreetId, 
           status: {
@@ -53,135 +67,58 @@ exports.post = function (req, res) {
           }
         }
       }).then(function(orig_street){
-      	if (orig_street){      	
-      		street.original_street_id = orig_street.id;
-      	}
-      	return
-      }).then(function(){
-      	return street.save().then(function (){
-	      	res.header('Location', config.restapi.baseuri + '/v1/streets/' + s.id)
-	      	res.status(201).send(s)
-	      	return 
-	        // return handleCreateStreet(street)
-	      }).catch(function (err) {
-					// handle error;
-					logger.error(err)
-				  res.status(500).send('Could not find_street street: ' + body.originalStreetId)
-				});
-	    });
-    } else {
-      return street.save().then(function () {
-      	handleCreateStreet(street)
+        if (orig_street){       
+          street.original_street_id = orig_street.id
+        }
         return
       }).catch(function (err) {
         // handle error;
         logger.error(err)
-        res.status(500).send('Could not create street')
+        res.status(500).send('Could not find original street')
+        return
       });
+      promises.push(p2)
     }
-  } // END function - saveStreet
-
-  if (req.loginToken) {
-  	User.findOne(
-    	{ login_tokens: { $contains: req.loginToken } }
-    ).then(function(user){     
-      street.user_id = user.id
-      return saveStreet()
-    }).catch(function (err) {
-			// handle error;
-			logger.error(err)
-		  res.status(500).send('Could not find user @loginToken: ' + req.loginToken)
-		});
-  } else {    
-    return saveStreet()
   }
+
+  Promise.all(promises).then(function() {
+    street.save().then(function (savedStreet) {
+      res.header('Location', config.restapi.baseuri + '/v1/streets/' + savedStreet.id)
+      res.status(201).send(savedStreet)
+      return
+    }).catch(function (err) {
+      logger.error(err)
+      res.status(500).send('Could not create street')
+      return
+    });
+  })
 } // END function - exports.post
 
 exports.delete = function (req, res) {
-	console.log("Street Delete entered")
-  // var handleDeleteStreet = function (err, s) {
-  //   if (err) {
-  //     logger.error(err)
-  //     res.status(500).send('Could not delete street.')
-  //     return
-  //   }
-
-  //   res.status(204).end()
-  // } // END function - handleDeleteStreet
-
-  // var handleFindStreet = function (err, street) {
-  //   if (err) {
-  //     logger.error(err)
-  //     res.status(500).send('Could not find street.')
-  //     return
-  //   }
-
-  //   if (!street) {
-  //     res.status(204).end()
-  //     return
-  //   }
-
-  //   var handleFindUser = function (err, user) {
-  //     if (err) {
-  //       logger.error(err)
-  //       res.status(500).send('Could not find signed-in user.')
-  //       return
-  //     }
-
-  //     if (!user) {
-  //       res.status(401).send('User is not signed-in.')
-  //       return
-  //     }
-
-  //     if (!street.creator_id) {
-  //       res.status(403).send('Signed-in user cannot delete this street.')
-  //       return
-  //     }
-
-  //     if (street.creator_id.toString() !== user._id.toString()) {
-  //       res.status(403).send('Signed-in user cannot delete this street.')
-  //       return
-  //     }
-
-  //     street.status = 'DELETED'
-  //     street.save(handleDeleteStreet)
-  //   } // END function - handleFindUser
-
-  //   User.findOne({ login_tokens: { $in: [ req.loginToken ] } }, handleFindUser)
-  // } // END function - handleFindStreet
-
-  // if (!req.loginToken) {
-  //   res.status(401).end()
-  //   return
-  // }
-
-  // if (!req.params.street_id) {
-  //   res.status(400).send('Please provide street ID.')
-  //   return
-  // }
-  console.log("looking for user with token: " + req.loginToken + "(" + typeof req.loginToken + ")")
   User.findOne({ 
   	where: {
-  		login_tokens: { $contains: '1' } 
+  		login_tokens: { $contains: req.loginToken } 
   	} 
   }).then(function(user){
   	if (!user){
   		res.status(500).send('Could not find signed-in user.')
   		return
   	}
-  	console.log('user found: @' + user.twitter_id)
-  	console.log("searching for street @id" + req.params.street_id )
+
 	  Street.findOne({ 
 	  	where: {
 		  	id: req.params.street_id,
-		  	user_id: user_id
+		  	user_id: user_id,
+        status: {
+          $ne: 'DELETED'
+        }
 		  }
 		}).then(function (street) {
 			if(!street){
 				res.status(500).send('Could not find street to delete.')
 				return
 			}
-		  console.log('deleting: ' + street.name)
+
 		  street.update({status: 'DELETED'}).then(function(suc){
 		  	res.status(204).end()
 		  }).catch(function (err) {
@@ -195,8 +132,6 @@ exports.delete = function (req, res) {
 			logger.error(err)
 		  res.status(500).send('Could not find street to delete.')
 		}); 
-
-
   }).catch(function (err) {
 		// handle error;
 		logger.error(err)	
@@ -209,49 +144,13 @@ exports.delete = function (req, res) {
 
 exports.get = function (req, res) {
 
-  // var handleFindStreet = function (err, street) {
-  //   if (err) {
-  //     logger.error(err)
-  //     res.status(500).send('Could not find street.')
-  //     return
-  //   }
-
-  //   if (!street) {
-  //     res.status(404).send('Could not find street.')
-  //     return
-  //   }
-
-  //   if (street.status === 'DELETED') {
-  //     res.status(410).send('Could not find street.')
-  //     return
-  //   }
-
-  //   res.header('Last-Modified', street.updated_at)
-  //   if (req.method === 'HEAD') {
-  //     res.status(204).end()
-  //     return
-  //   }
-
-  //   street.asJson(function (err, streetJson) {
-  //     if (err) {
-  //       logger.error(err)
-  //       res.status(500).send('Could not render street JSON.')
-  //       return
-  //     }
-
-  //     res.set('Access-Control-Allow-Origin', '*')
-  //     res.set('Location', config.restapi.baseuri + '/v1/streets/' + street.id)
-  //     res.status(200).send(streetJson)
-  //   })
-  // } // END function - handleFindStreet
-
   if (!req.params.street_id) {
     res.status(400).send('Please provide street ID.')
     return
   }
-	Street.findOne({ id: req.params.street_id }).then(function (suc) {
-	  // console.log(suc)
-	  res.status(200).send(suc)
+	Street.findOne({ id: req.params.street_id }).then(function (street) {
+	  res.status(200).send(street)
+    return
 	}).catch(function (err) {
 		// handle error;
 		logger.error(err)
@@ -262,136 +161,86 @@ exports.get = function (req, res) {
 
 exports.find = function (req, res) {
 	
-  var user_id = req.query.creatorId
+  var twitter_name = req.query.creatorId
   var namespacedId = req.query.namespacedId
-  var start = (req.query.start && parseInt(req.query.start, 10)) || 0
-  var count = (req.query.count && parseInt(req.query.count, 10)) || 20
+  var offset = (req.query.start && parseInt(req.query.start, 10)) || 0
+  var limit = (req.query.count && parseInt(req.query.count, 10)) || 20
 
-  var handleFindStreet = function (err, street) {
-    // if (err) {
-    //   logger.error(err)
-    //   res.status(500).send('Could not find street.')
-    //   return
-    // }
+  var AsJson = function(streets){
+    var json = {
+        meta: {
+          links: {
+            self: config.restapi.baseuri + '/v1/streets?start=' + offset + '&count=' + limit
+          }
+        },
+        streets: streets
+      }
 
+    var prevStart, nextStart
+    if (offset > limit){
+      prevStart = offset - limit
+      json.meta.links.prev = config.restapi.baseuri + '/v1/streets?start=' + prevStart + '&count=' + limit
+    // } else {
+    //   prevStart = 0
+    }
+    if (streets.length >= limit){
+      nextStart = offset + limit
+      json.meta.links.next = config.restapi.baseuri + '/v1/streets?start=' + nextStart + '&count=' + limit
+    }        
+    return json
+  }
+
+  var handleFindStreet = function (street) {
+    
     if (!street) {
-      res.status(404).send('Could not find street.')
-      return
-    }
-
-    if (street.status === 'DELETED') {
-      res.status(410).send('Could not find street.')
-      return
-    }
-
-    res.set('Location', config.restapi.baseuri + '/v1/streets/' + street.id)
-    res.set('Content-Length', 0)
-    res.status(307).end()
+      res.status(404).send('Could not find street.')      
+    } else {
+      res.set('Access-Control-Allow-Origin', '*')
+      res.set('Location', config.restapi.baseuri + '/v1/streets/' + street.id)
+      res.set('Content-Length', 0)
+      res.status(307).end()
+    }    
   } // END function - handleFindStreet
 
-  var handleFindUser = function (err, user) {
-    if (err || !user) {
-      res.status(404).send('Creator not found.')
-      return
-    }
-
-    Street.findOne({ namespaced_id: namespacedId, user_id: user._id }, handleFindStreet)
-  } // END function - handleFindUser
-
-  var handleFindStreets = function (results){// (err, results) {
-    // if (err) {
-    //   logger.error(err)
-    //   res.status(500).send('Could not find streets.')
-    //   return
-    // }
-// console.log("executing handleFIndStreets")
-
-    var totalNumStreets = results[0]
-    var streets = results[1]
-
-    var selfUri = config.restapi.baseuri + '/v1/streets?start=' + start + '&count=' + count
-
-    var json = {
-      meta: {
-        links: {
-          self: selfUri
-        }
-      },
-      streets: []
-    }
-
-    if (start > 0) {
-      var prevStart, prevCount
-      if (start >= count) {
-        prevStart = start - count
-        prevCount = count
-      } else {
-        prevStart = 0
-        prevCount = start
-      }
-      json.meta.links.prev = config.restapi.baseuri + '/v1/streets?start=' + prevStart + '&count=' + prevCount
-    }
-
-    if (start + streets.length < totalNumStreets) {
-      var nextStart, nextCount
-      nextStart = start + count
-      nextCount = Math.min(count, totalNumStreets - start - streets.length)
-      json.meta.links.next = config.restapi.baseuri + '/v1/streets?start=' + nextStart + '&count=' + nextCount
-    }
-
-    async.map(
-      streets,
-      function (street, callback) { street.asJson(callback) },
-      function (err, results) {
-        if (err) {
-          logger.error(err)
-          res.status(500).send('Could not append street.')
-          return
-        }
-
-        json.streets = results
-        res.status(200).send(json)
-      }) // END - async.map
-  } // END function - handleFindStreets
-
-  if (user_id) {
+  if (twitter_name) {
   	User.findOne({
-			where: { twitter_id: user_id },
-			order: [
-				['updated_at', 'DESC'],
-			],
-    	limit: count,
-    	offset: start
+			where: { twitter_name: twitter_name }
 		}).then(function (user) {
-		  return Street.findAll({ 
-      	where: {user_id: user.id, status: 'ACTIVE' },
-      	order: [
-      		['updated_at', 'DESC'],
-      	],
-      	limit: count,
-      	offset: start
-      })
-		}).then(function (streets) {
-	      res.status(200).send(streets)
+      if (!user){
+        res.status(404).send('Could not find user user @twitter_id: ' + twitter_name)
         return
-	  }).catch(function (err) {
-			// handle error;
-			logger.error(err)
-		  res.status(500).send('Could not find steets for user user.' + user_id)
-		  return
-		});
+      } else{
+        Street.findOne({ 
+          where: {
+            user_id: user.id,
+            status: {$ne: 'DELETED'}
+          }
+        }).then(function (street) {
+          handleFindStreet(street)
+          return
+        }).catch(function (err) {
+          // handle error;
+          logger.error(err)
+          res.status(500).send('Could not find streets for user user @twitter_id: ' + twitter_name)
+          return
+        });
+      }		  
+		}).catch(function (err) {
+      // handle error;
+      logger.error(err)
+      res.status(500).send('Could not find user user @twitter_id: ' + twitter_name)
+      return
+    });
   } else if (namespacedId && namespacedId !== 'null' && namespacedId !== 'undefined'){
-  	console.log("streets find w/ namespacedId: " + namespacedId)  	
-    Street.findOne({
-    	where: { namespaced_id: namespacedId, user_id: null },
-    	order: [
-				['updated_at', 'DESC'],
-			],
-			offset: start,
-			limit: count
-    }).then(function (streets) {
-		  // console.log(streets)
-		  res.status(200).send(streets)
+  	Street.findOne({
+    	where: { 
+        namespaced_id: namespacedId,
+        user_id: null,
+        status: {$ne: 'DELETED'}
+      }
+    }).then(function (street) {
+		  handleFindStreet(street)
+      return
 		}).catch(function (err) {
 			// handle error;
 			logger.error(err)
@@ -399,33 +248,27 @@ exports.find = function (req, res) {
 		  return
 		});
   } else {
-  	console.log("get all active streets")
-    // async.parallel([
-    //   function (callback) { Street.count({ status: 'ACTIVE' }, callback) },
-    //   function (callback) {
-        Street.findAll({ 
-        	where: {status: 'ACTIVE' },
-        	order: [
-        		['updated_at', 'DESC'],
-        	],
-        	limit: count,
-        	offset: start	        	
-        }).then(function (streets) {
-		      // console.log(streets)
-		      res.status(200).send(streets)
-		    }).catch(function (err) {
-	  			// handle error;
-	  			logger.error(err)
-		      res.status(500).send('Could not find street.')
-		      return
-				});
-		  // }
-    // ])
+  	Street.findAll({ 
+    	where: {status: 'ACTIVE' },
+    	order: [
+    		['updated_at', 'DESC'],
+    	],
+    	limit: limit,
+    	offset: offset
+    }).then(function (streets) {
+      res.status(200).send(AsJson(streets))
+      return
+    }).catch(function (err) {
+			// handle error;
+			logger.error(err)
+      res.status(500).send('Could not find street.')
+      return
+		});
   }
 } // END function - exports.find
 
 exports.put = function (req, res) {
-  console.log("\nstreets - PUT begin\n")
+
   var body
 
   if (req.body) {
@@ -457,8 +300,7 @@ exports.put = function (req, res) {
         res.status(500).send('Could not find street @id: ' + body.originalStreetId)
         return
       });
-    } 
-    // else {
+    } else {
       return street.save().then(function(){
         // handleUpdateStreet(street)
         res.status(204).end('street @id:' + street.id + ' updated.')
@@ -468,7 +310,7 @@ exports.put = function (req, res) {
         res.status(500).send('Could not find update street @id: ' + street.id)
         return
       });
-    // }
+    }
   } // END function - updateStreetData
 
   if (!req.params.street_id) {
@@ -476,17 +318,14 @@ exports.put = function (req, res) {
     return
   }
 
-  Street.findOne(
-    {
-      where: 
-        { 
-          id: req.params.street_id,
-          status: {
-              $ne: 'DELETED'
-            }
-        }
-    }
-  ).then(function(street){
+  Street.findOne({
+    where: { 
+      id: req.params.street_id,
+      status: {
+        $ne: 'DELETED'
+      }
+    }   
+  }).then(function(street){
     if (!street) {
       res.status(404).send('Could not find street.')      
     } else if (!street.user_id){
@@ -504,7 +343,7 @@ exports.put = function (req, res) {
       ).then(function(user){
         if (!user) {
           res.status(401).send('User is not signed-in.')
-        } else if (street.creator_id !== user.id) {
+        } else if (street.user_id && (street.user_id !== user.id)) {
           res.status(403).send('Signed-in user cannot update this street.')          
         } else{
           return updateStreetData(street)
@@ -522,5 +361,4 @@ exports.put = function (req, res) {
     res.status(500).send('Could not find street @id: ' + req.params.street_id)
     return
   });
-  console.log("\nstreets - PUT end\n")
 } // END function - exports.put

@@ -69,7 +69,7 @@ var User = sequelize.define('user',
     // last_street_id: {
     //   type: Sequelize.INTEGER
     // },
-    profile_image_url_https: {
+    profileImageUrl: {
       type: Sequelize.VIRTUAL,
       validate: {
         isUrl: true,
