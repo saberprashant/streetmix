@@ -72,23 +72,23 @@ app.get(config.twitter.oauth_callback_uri, controllers.twitter_sign_in_callback.
 app.post('/api/v1/users', resources.v1.users.post)
 app.get('/api/v1/users/:user_id', resources.v1.users.get)
 app.put('/api/v1/users/:user_id', resources.v1.users.put)
-// app.delete('/api/v1/users/:user_id/login-token', resources.v1.users.delete)
+app.delete('/api/v1/users/:user_id/login-token', resources.v1.users.delete)
 app.get('/api/v1/users/:user_id/streets', resources.v1.users_streets.get)
 
 app.post('/api/v1/streets', resources.v1.streets.post)
 app.get('/api/v1/streets', resources.v1.streets.find)
-// app.head('/api/v1/streets', resources.v1.streets.find)
+app.head('/api/v1/streets', resources.v1.streets.find)
 
 app.delete('/api/v1/streets/:street_id', resources.v1.streets.delete)
-// app.head('/api/v1/streets/:street_id', resources.v1.streets.get)
+app.head('/api/v1/streets/:street_id', resources.v1.streets.get)
 app.get('/api/v1/streets/:street_id', resources.v1.streets.get)
 app.put('/api/v1/streets/:street_id', resources.v1.streets.put)
 
-// app.post('/api/v1/feedback', resources.v1.feedback.post)
+app.post('/api/v1/feedback', resources.v1.feedback.post)
 
-// app.get('/api/v1/translate/:locale_code/:resource_name', resources.v1.translate.get)
+app.get('/api/v1/translate/:locale_code/:resource_name', resources.v1.translate.get)
 
-// app.get('/.well-known/status', resources.well_known_status.get)
+app.get('/.well-known/status', resources.well_known_status.get)
 
 // Process stylesheets via Sass and PostCSS / Autoprefixer
 app.use('/assets/css/styles.css', middleware.styles)
