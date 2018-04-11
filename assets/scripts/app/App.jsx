@@ -1,4 +1,5 @@
 import React from 'react'
+import { BrowserRouter as Router, Route } from 'react-router-dom'
 import PropTypes from 'prop-types'
 import { connect } from 'react-redux'
 import { IntlProvider } from 'react-intl'
@@ -19,12 +20,12 @@ import BlockingError from './BlockingError'
 import StreetView from './StreetView'
 import DebugHoverPolygon from '../info_bubble/DebugHoverPolygon'
 import PrintContainer from './PrintContainer'
+import AdminForm from './adminForm'
 
 class App extends React.PureComponent {
   static propTypes = {
     locale: PropTypes.object
   }
-
   render () {
     return (
       <React.Fragment>
@@ -72,6 +73,12 @@ class App extends React.PureComponent {
         <Flash />
         <DebugInfo />
         <PrintContainer />
+
+        { /* I also tried to setup a react-router in order to setup '/admin' route
+          and direct to this path using client's static files which are build at runtime */}
+        <Router>
+          <Route path="/admin" component={AdminForm} />
+        </Router>
       </React.Fragment>
     )
   }

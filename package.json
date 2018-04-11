@@ -12,7 +12,6 @@
     "npm": "5.6.0"
   },
   "scripts": {
-    "prestart": "npm run mongo:start",
     "start": "npm run app:start",
     "stop": "npm run mongo:stop",
     "test": "npm run lint && npm run jest:watch",
@@ -20,7 +19,6 @@
     "test:full": "npm run jest && npm run lint && npm run protractor:local",
     "posttest:full": "npm run test:cleanup",
     "precommit": "lint-staged",
-    "mongo:start": "mongod --fork --logpath /dev/null",
     "mongo:stop": "mongo admin --eval 'db.shutdownServer()'",
     "app:start": "supervisor -e node,js,jsx index.js",
     "test:cleanup": "npm run test:server:close && npm run mongo:stop",
@@ -124,6 +122,7 @@
     "react-intl": "2.4.0",
     "react-leaflet": "1.8.2",
     "react-redux": "5.0.7",
+    "react-router-dom": "4.2.2",
     "react-transition-group": "2.2.1",
     "redux": "3.7.2",
     "redux-thunk": "2.2.0",

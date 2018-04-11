@@ -202,6 +202,22 @@ app.post(
 
 app.use(express.static(path.join(__dirname, '/public')))
 
+/*
+Well I strugggled a lot to find the way to setup a route '/admin' in this code and I spent 2 days to understand the
+architecture, and I get to know a bit like how the "menu bar is holding different components", "how all those different options
+come while making a new street" and "how the user street data is getting saved in DB and shows in console.". I did all this to
+find out the place in code, where the '/new' route to create a new street is assigned but sadly, I didn't find it out. I was thinking
+to use the same methods that you used to setup routes in your app. Then, I realized that I have only some time left for assignment
+and I thought to make a different app as per your specifications by following the code style of yours. That's why I created a new
+folder named 'prashant-server', and I've done my whole assignment there. So, please take a look at it.
+Please find all other details on your mail.
+*/
+
+// This is where I was trying to setup the route
+// app.get('/admin', function (req, res) {
+//   res.send('HI there, I am prashant jain')
+// })
+
 // Catch-all
 app.use(function (req, res) {
   res.render('main', {})
